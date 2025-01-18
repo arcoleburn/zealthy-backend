@@ -1,33 +1,19 @@
-// import { AutoRouter } from 'itty-router';
-
+import { AutoRouter } from 'itty-router';
+import { getUsers } from './routes/users';
 export interface Env {
 	DB: D1Database;
 }
-
-// const router = AutoRouter()
-
-// router.get('/users')
+const router = AutoRouter();
+router.all('*', () => new Response('Not Found', { status: 404 }));
+router.get('/users', async (env: Env) => {
+	console.log('Matched /users route');
+	return await getUsers(env);
+});
 
 export default {
 	async fetch(req, env): Promise<Response> {
-		const { pathname } = new URL(req.url);
+		console.log('req received,', req.method, req.url);
 
-		if (pathname === '/get/users') {
-			const { results } = await env.DB.prepare(
-				`SELECT 
-				email,
-				aboutMe,
-				birthday,
-				address1,
-				address2,
-				city,
-				state,
-				zipcode
-			FROM Users
-			LEFT JOIN Addresses ON Users.userId = Addresses.userId;`
-			).all();
-			return Response.json(results);
-		}
-		return new Response('not found', { status: 404 });
+		return router.handle(req, env);
 	},
 } satisfies ExportedHandler<Env>;
