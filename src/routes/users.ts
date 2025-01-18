@@ -1,29 +1,125 @@
 import type { Env } from '..';
-const query = `SELECT 
-				email,
-				aboutMe,
-				birthday,
-				address1,
-				address2,
-				city,
-				state,
-				zipcode
-			FROM Users
-			LEFT JOIN Addresses ON Users.userId = Addresses.userId;`;
+import { addAddressQuery, addressByUserIdQuery, addUserQuery, allUsersDataQuery, deleteUserQuery, getUserQuery, updateAddressQuery, updateUserQuery } from '../shared/queries';
+import { CreateUserBody } from '../shared/types';
+import { cleanAddress, mergeWithExistingUser } from '../shared/utils';
 
-const testQuery = 'SELECT * FROM Users';
+
+
+
+const getUserById = async (env: Env, userId: string) => {
+	try {
+		const { results } = await env.DB.prepare(getUserQuery).bind(userId).all();
+		return results[0]; // We expect only one result
+	} catch (err) {
+		console.error('Error fetching user:', err);
+		throw new Error('Error fetching user');
+	}
+};
+
 
 export async function getUsers(env: Env): Promise<Response> {
-	console.log('users route');
 	try {
-		const { results } = await env.DB.prepare(testQuery).all();
-		console.log(results);
+		const { results } = await env.DB.prepare(allUsersDataQuery).all();
 		if (!results || results.length === 0) {
 			return new Response('no users found', { status: 404 });
 		}
 		return Response.json(results);
 	} catch (err) {
-		console.error('Error fetching users:', err);
 		return new Response('Internal Server Error', { status: 500 });
 	}
+}
+
+export async function addUser(req: Request, env: Env) {
+	try {
+		const body: CreateUserBody = await req.json();
+
+		const { email, pw, aboutMe, birthday, address1, address2, city, state, zipcode } = body;
+
+		if (!email || !pw || !aboutMe || !birthday) {
+			return new Response('Missing required fields', { status: 400 });
+		}
+
+		await env.DB.prepare(addUserQuery).bind(email, pw, aboutMe, birthday).run();
+		const userIdResult = await env.DB.prepare('SELECT last_insert_rowid() AS userId').all();
+		const userId = userIdResult.results[0].userId;
+
+		const addressVals = cleanAddress({ address1, address2, city, state, zipcode });
+		if (addressVals.some((val) => val !== null)) {
+			await env.DB.prepare(addAddressQuery)
+				.bind(userId, ...addressVals)
+				.run();
+		}
+		return Response.json({ userId }, { status: 201 });
+	} catch (err) {
+		console.error(err);
+		return new Response('Internal server error', { status: 500 });
+	}
+}
+
+
+export async function updateUser(id: string, updatedData: any, env: Env): Promise<Response> {
+	const user = await getUserById(env, id);
+	try {
+		// Update user details in the Users table
+		const updatedUser = mergeWithExistingUser(user, updatedData);
+
+		await env.DB.prepare(updateUserQuery).bind(updatedUser.email, updatedUser.pw, updatedUser.aboutMe, updatedUser.birthday, id).run();
+
+		// Return a success response
+		return new Response(JSON.stringify({ message: 'User updated successfully' }), { status: 200 });
+	} catch (err) {
+		console.error('Error updating user:', err);
+		return new Response('Internal Server Error', { status: 500 });
+	}
+}
+
+export async function updateAddress(userId: string, updatedData: any, env: Env): Promise<Response> {
+
+	if (!updatedData.address1 || !updatedData.city || !updatedData.state || !updatedData.zipcode) {
+		return new Response('Missing required address fields', { status: 400 });
+	}
+
+  const address = await getAddressByUserId(env, userId);
+
+	if (!address) {
+		return new Response('Address not found', { status: 404 });
+	}
+
+	const updatedAddress = {
+		address1: updatedData.address1 ?? null,
+		address2: updatedData.address2 ?? null,
+		city: updatedData.city ?? null,
+		state: updatedData.state ?? null,
+		zipcode: updatedData.zipcode ?? null,
+	};
+
+	try {
+		await env.DB.prepare(updateAddressQuery)
+			.bind(updatedAddress.address1, updatedAddress.address2, updatedAddress.city, updatedAddress.state, updatedAddress.zipcode, userId)
+			.run();
+
+		return new Response(JSON.stringify({ message: 'Address updated successfully' }), { status: 200 });
+	} catch (err) {
+		console.error('Error updating address:', err);
+		return new Response('Internal Server Error', { status: 500 });
+	}
+}
+
+// Function to get the address by userId
+async function getAddressByUserId(env: Env, userId: string) {
+	const { results } = await env.DB.prepare(addressByUserIdQuery).bind(userId).all();
+	return results.length > 0 ? results[0] : null; // Return the address if found
+}
+
+
+
+export async function deleteUser(userId: string, env: Env): Promise<Response> {  
+  try {
+   await env.DB.prepare(deleteUserQuery).bind(userId).run();
+
+    return new Response(JSON.stringify({ message: 'User deleted successfully' }), { status: 200 });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    return new Response('Internal Server Error', { status: 500 });
+  }
 }
