@@ -35,6 +35,20 @@ export const updateAddressQuery = `
   WHERE userId = ?;
 `;
 
-export 	const getUserQuery = 'SELECT * FROM Users WHERE userId = ?';
-
+export const getUserQuery = `
+  SELECT 
+    Users.userId,
+    email,
+    pw,
+    aboutMe,
+    birthday,
+    address1,
+    address2,
+    city,
+    state,
+    zipcode
+  FROM Users
+  LEFT JOIN Addresses ON Users.userId = Addresses.userId
+  WHERE Users.userId = ?;
+`;
 export 	const addressByUserIdQuery = 'SELECT * FROM Addresses WHERE userId = ?';

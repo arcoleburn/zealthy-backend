@@ -1,14 +1,16 @@
-import { AutoRouter, RouterType } from 'itty-router';
-import { addUser, deleteUser, getUsers, updateAddress, updateUser } from './routes/users';
+import { AutoRouter, cors, RouterType } from 'itty-router';
+import { addAddress, addUser, deleteUser, getUsers, lookUpUserByEmail, updateAddress, updateUser } from './routes/users';
+import { getAllModules, updateModules } from './routes/modules';
 export interface Env {
 	DB: D1Database;
 	router?: RouterType;
 }
-const router = AutoRouter();
-router.all('*', () => new Response('Not Found', { status: 404 }));
-router.get('/users', async (env: Env) => {
-	return await getUsers(env);
-});
+const { preflight, corsify } = cors({ origin: '*', allowMethods: '*' });
+
+// router.all('*', () => new Response('Not Found', { status: 404 }));
+// router.get('/users', async (env: Env) => {
+// 	return await getUsers(env);
+// });
 
 export default {
 	async fetch(req, env): Promise<Response> {
@@ -20,11 +22,16 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 function buildRouter(env: Env): RouterType {
-	const router = AutoRouter();
+	const router = AutoRouter({ before: [preflight], finally: [corsify] });
+	// router.use(corsify);
 
 	router.get('/users', async () => {
-		console.log('users route');
 		const res = await getUsers(env);
+		return res;
+	});
+	router.post('/login', async (req) => {
+		const body: { email: string; pw: string } = await req.json();
+		const res = await lookUpUserByEmail(env, body.email, body.pw);
 		return res;
 	});
 
@@ -35,6 +42,7 @@ function buildRouter(env: Env): RouterType {
 
 	router.put('/users/:userId', async (req) => {
 		const userId = req.params.userId;
+		console.log('USER ID', userId, req);
 		const updatedUser = await req.json();
 		if (!updatedUser) {
 			return new Response('Invalid user data', { status: 400 });
@@ -44,7 +52,14 @@ function buildRouter(env: Env): RouterType {
 		const response = await updateUser(userId, { ...updatedUser }, env);
 		return response;
 	});
-
+	router.post('/address/:userId', async (req) => {
+		const userId = req.params.userId;
+		const address = await req.json();
+		console.log({ address });
+		const res = await addAddress(userId, address, env);
+		console.log('res in route', { res });
+		return res;
+	});
 	router.put('/address/:userId', async (req) => {
 		const userId = req.params.userId;
 		const updatedAddress = await req.json();
@@ -59,6 +74,19 @@ function buildRouter(env: Env): RouterType {
 	router.delete('/users/:userId', async (req) => {
 		const userId = req.params.userId;
 		return await deleteUser(userId, env); // Pass the userId and env to your deleteUser function
+	});
+
+	router.get('/modules', async () => {
+		const res = await getAllModules(env);
+		return res;
+	});
+
+	router.put('/modules', async (req) => {
+		const updatedModules: { one: string[]; two: string[] } = await req.json();
+		console.log({ updatedModules });
+
+		const res = await updateModules(env, updatedModules);
+		return res;
 	});
 
 	router.all('*', () => new Response('Not Found.', { status: 404 }));
