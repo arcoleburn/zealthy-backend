@@ -125,7 +125,6 @@ export async function updateUser(id: string, updatedData: any, env: Env): Promis
 		const res = await env.DB.prepare(updateUserQuery)
 			.bind(updatedUser.email, updatedUser.pw, updatedUser.aboutMe, updatedUser.birthday, id)
 			.run();
-		console.log('res', res);
 		// Return a success response
 		return new Response(JSON.stringify({ message: 'User updated successfully' }), { status: 200 });
 	} catch (err) {

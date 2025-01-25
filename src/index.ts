@@ -7,10 +7,6 @@ export interface Env {
 }
 const { preflight, corsify } = cors({ origin: '*', allowMethods: '*' });
 
-// router.all('*', () => new Response('Not Found', { status: 404 }));
-// router.get('/users', async (env: Env) => {
-// 	return await getUsers(env);
-// });
 
 export default {
 	async fetch(req, env): Promise<Response> {
@@ -23,7 +19,6 @@ export default {
 
 function buildRouter(env: Env): RouterType {
 	const router = AutoRouter({ before: [preflight], finally: [corsify] });
-	// router.use(corsify);
 
 	router.get('/users', async () => {
 		const res = await getUsers(env);
