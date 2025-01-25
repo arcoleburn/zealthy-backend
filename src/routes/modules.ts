@@ -1,13 +1,8 @@
 import { Env } from '..';
 
-// {
-//   one: ['', '']
-//   two: ['']
-// }
 
 export async function updateModules(env: Env, data: { one: string[]; two: string[] }): Promise<Response> {
 	const db = env.DB;
-	console.log('Updating modules', data);
 	try {
 		// Update page 1 for all modules in "one"
 		for (const moduleName of data.one) {

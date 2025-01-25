@@ -37,7 +37,6 @@ function buildRouter(env: Env): RouterType {
 
 	router.put('/users/:userId', async (req) => {
 		const userId = req.params.userId;
-		console.log('USER ID', userId, req);
 		const updatedUser = await req.json();
 		if (!updatedUser) {
 			return new Response('Invalid user data', { status: 400 });
@@ -50,9 +49,7 @@ function buildRouter(env: Env): RouterType {
 	router.post('/address/:userId', async (req) => {
 		const userId = req.params.userId;
 		const address = await req.json();
-		console.log({ address });
 		const res = await addAddress(userId, address, env);
-		console.log('res in route', { res });
 		return res;
 	});
 	router.put('/address/:userId', async (req) => {
@@ -78,8 +75,6 @@ function buildRouter(env: Env): RouterType {
 
 	router.put('/modules', async (req) => {
 		const updatedModules: { one: string[]; two: string[] } = await req.json();
-		console.log({ updatedModules });
-
 		const res = await updateModules(env, updatedModules);
 		return res;
 	});

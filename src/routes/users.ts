@@ -15,7 +15,6 @@ import { cleanAddress, mergeWithExistingUser } from '../shared/utils';
 const getUserById = async (env: Env, userId: string) => {
 	try {
 		const { results } = await env.DB.prepare(getUserQuery).bind(userId).all();
-		console.log(results);
 		return results[0]; // We expect only one result
 	} catch (err) {
 		console.error('Error fetching user:', err);
@@ -47,12 +46,9 @@ export const lookUpUserByEmail = async (env: Env, email: string, pw: string): Pr
 				WHERE userId = ?;
 			`;
 			const newUser = await env.DB.prepare(newUserQuery).bind(userId).all();
-			console.log(newUser);
 			return Response.json({ ...newUser.results[0], newUser: true });
 		}
 		const user = await getUserById(env, results[0].userId as string);
-		console.log(user);
-		console.log(pw, user.pw);
 		if (pw !== user.pw) {
 			return new Response('Invalid password', { status: 401 });
 		}
@@ -103,15 +99,12 @@ export async function addUser(req: Request, env: Env) {
 }
 export async function addAddress(userId: string, address: any, env: Env) {
 	try {
-		// const body: any = await req.json();
-		// console.log({ body });
+
 		const { address1, address2, city, state, zipcode } = address;
 
 		const res = await env.DB.prepare(addAddressQuery).bind(userId, address1, address2, city, state, zipcode).run();
-		console.log('res in add address', res);
 		return Response.json({ status: 201 });
 	} catch (err) {
-		console.log('catch of add address');
 		console.error(err);
 		return new Response('Internal server error', { status: 500 });
 	}
@@ -121,7 +114,6 @@ export async function updateUser(id: string, updatedData: any, env: Env): Promis
 	try {
 		// Update user details in the Users table
 		const updatedUser = mergeWithExistingUser(user, updatedData);
-		console.log(updatedUser, id);
 		const res = await env.DB.prepare(updateUserQuery)
 			.bind(updatedUser.email, updatedUser.pw, updatedUser.aboutMe, updatedUser.birthday, id)
 			.run();
